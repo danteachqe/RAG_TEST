@@ -1,0 +1,15 @@
+# Core scientific array library
+numpy==2.3.1          # released 2025-06-21  :contentReference[oaicite:0]{index=0}
+
+# PDF text extraction (`import fitz`)
+PyMuPDF==1.26.1       # released 2025-06-11  :contentReference[oaicite:1]{index=1}
+
+# Vector search backend (CPU build)
+faiss-cpu==1.11.0     # released 2025-04-28  :contentReference[oaicite:2]{index=2}
+#  └─ swap to `faiss-gpu==1.11.0` if you have CUDA and want GPU acceleration
+
+# Progress-bar utility (optional but handy)
+tqdm==4.67.1          # released 2024-11-24  :contentReference[oaicite:3]{index=3}
+
+# OpenAI API client for embeddings / chat calls
+openai==1.93.0        # latest as of 2025-06-27  :contentReference[oaicite:4]{index=4}
