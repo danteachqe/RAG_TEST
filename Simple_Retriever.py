@@ -1,9 +1,4 @@
-"""
-Minimal PDF/TXT → FAISS → CLI retrieval demo
-Dependencies:
-  pip install openai pymupdf faiss-cpu tqdm
-Set OPENAI_API_KEY in your environment first.
-"""
+# Simple Retriever using FAISS and OpenAI Embeddings
 import os, pickle, sys
 from typing import List, Dict
 import numpy as np
