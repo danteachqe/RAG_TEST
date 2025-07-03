@@ -1,22 +1,4 @@
-"""
-rag_cli.py — Retrieval & Prompt Builder (no generation)
-======================================================
-• Loads PDFs/TXTs from *documents*.
-• Builds/loads a FAISS index with OpenAI embeddings.
-• CLI: retrieves top-k chunks for a question, prints them **and** prints
-  the prompt that would be sent to an LLM — but **stops there** (no
-  chat-completion call).
-
-Run
----
-```
-python rag_cli.py
-```
-Type a question or `exit` to quit.
-"""
-
 from __future__ import annotations
-
 import os, pickle, sys
 from typing import List, Dict
 
