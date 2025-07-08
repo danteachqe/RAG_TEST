@@ -1,10 +1,4 @@
-"""
-top_k_docs.py  –  minimal “top-K documents” retrieval layer
 
-• Scans the `documents/` folder for .pdf and .txt files
-• Builds a FAISS index over **whole-document embeddings**
-• Exposes `top_k_docs(query, k)` → [(filename, score), …]
-"""
 
 import os, pickle
 from typing import List, Tuple

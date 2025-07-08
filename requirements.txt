@@ -13,3 +13,6 @@ tqdm==4.67.1          # released 2024-11-24  :contentReference[oaicite:3]{index=
 
 # OpenAI API client for embeddings / chat calls
 openai==1.93.0        # latest as of 2025-06-27  :contentReference[oaicite:4]{index=4}
+
+# Testing framework
+pytest==8.2.2         # latest as of 2025-06-27
