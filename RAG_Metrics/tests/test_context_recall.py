@@ -1,6 +1,6 @@
 from ragas import evaluate
 from ragas.metrics import context_recall
-from .shared_dataset import dataset
+from RAG_Metrics.tests.shared_dataset import dataset
 
 def test_context_recall():
     import numpy as np

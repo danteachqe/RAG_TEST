@@ -1,8 +1,10 @@
 # tests/shared_dataset.py
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from rag_cli import retrieve
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+from RAG_Metrics.rag_cli import retrieve
 from datasets import Dataset
 
 _rows = [

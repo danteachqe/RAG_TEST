@@ -1,6 +1,6 @@
 from ragas import evaluate
 from ragas.metrics import context_precision
-from .shared_dataset import dataset
+from RAG_Metrics.tests.shared_dataset import dataset
 
 def test_context_precision():
     import numpy as np
