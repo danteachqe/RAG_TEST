@@ -13,7 +13,7 @@ import os
 DOCS_DIR = r"C:\code\RAG_Test\RAG_TEST\Documents"
 
 
-DB_DIR       = r"C:\code\RAG_Test\RAG_TEST\faiss_index"
+DB_DIR       = "faiss_index"
 INDEX_FILE   = os.path.join(DB_DIR, "index.faiss")
 META_FILE    = os.path.join(DB_DIR, "docs.pkl")
 
