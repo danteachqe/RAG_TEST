@@ -9,9 +9,7 @@ import openai
 # ─────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────
-import os
 DOCS_DIR = r"C:\code\RAG_Test\RAG_TEST\Documents"
-
 
 DB_DIR       = "faiss_index"
 INDEX_FILE   = os.path.join(DB_DIR, "index.faiss")
@@ -142,6 +140,19 @@ def setup():
             sys.exit(f"No PDFs/TXTs found in '{DOCS_DIR}'.")
         create_vector_db(docs)
 
+# ─────────────────────────────────────
+# MAIN LOOP
+# ─────────────────────────────────────
 if __name__ == "__main__":
     setup()
-    print("✅ Ready. Call `generate_answer(query)` from test or script.")
+    print("✅ RAG Ready. Ask your question (type 'exit' to quit):")
+    while True:
+        q = input(">>> ").strip()
+        if q.lower() == "exit":
+            print("👋 Exiting.")
+            break
+        try:
+            a = generate_answer(q)
+            print("🧠 Answer:", a)
+        except Exception as e:
+            print("❌ Error:", e)
