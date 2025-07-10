@@ -1,19 +1,3 @@
-"""
-rag_cli.py — Complete RAG (retrieve ➜ prompt ➜ generate)
-=======================================================
-• Loads PDFs/TXTs from *documents*.
-• Builds/loads a FAISS index with OpenAI embeddings.
-• CLI: retrieves top‑k chunks, prints them, shows the assembled prompt,
-  **calls an LLM**, and prints the answer.
-
-Run
----
-```
-python rag_cli.py
-```
-Type a question or `exit`/`quit` to leave.
-"""
-
 from __future__ import annotations
 
 import os, pickle, sys
@@ -33,8 +17,8 @@ DB_DIR       = "faiss_index"      # Where the index lives
 INDEX_FILE   = os.path.join(DB_DIR, "index.faiss")
 META_FILE    = os.path.join(DB_DIR, "docs.pkl")
 
-CHUNK_SIZE    = 500
-CHUNK_OVERLAP = 100
+CHUNK_SIZE    = 1500
+CHUNK_OVERLAP = 300
 EMBED_MODEL   = "text-embedding-3-small"
 MAX_CONTEXTS  = 3
 

@@ -18,4 +18,9 @@ openai==1.93.0        # latest as of 2025-06-27  :contentReference[oaicite:4]{in
 pytest==8.2.2         # latest as of 2025-06-27
 
 # DeepEval for LLM-as-a-Judge metrics
-deepeval==0.21.6      # or latest compatible version
+deepeval==3.2.4      # or latest compatible version
+
+# Ragas for RAG evaluation metrics
+ragas==0.2.10
+# HuggingFace Datasets for test data
+datasets==2.19.1
