@@ -131,7 +131,8 @@ def generate_answer(query: str) -> str:
         raise EnvironmentError("OPENAI_API_KEY not set")
     client = openai.OpenAI()
 
-    def extract_score(section):
+    def extract_score(section: str) -> float:
+        """Extracts a float score from the start of a section string."""
         match = re.match(r"([01](?:\.\d+)?)(?:\s|:|,|$)", section.strip())
         if match:
             try:
@@ -140,22 +141,55 @@ def generate_answer(query: str) -> str:
                 return None
         return None
 
+    def build_context(query: str) -> str:
+        """Retrieves and joins top context chunks for the query."""
+        hits = retrieve(query)
+        return "\n\n".join(h["text"] for h in hits)
+
+    def call_llm(messages, model=LLM_MODEL, temperature=0.2):
+        """Calls the LLM with given messages."""
+        return client.chat.completions.create(
+            model=model,
+            temperature=temperature,
+            messages=messages
+        )
+
+    def parse_critique(critique: str):
+        """Extracts and prints each special token section and returns their scores."""
+        issup, isrel, isuse = None, None, None
+        for token in ["RETRIEVE", "ISSUP", "ISREL", "ISUSE"]:
+            match = re.search(rf"{token}:(.*?)(?=\n[A-Z]+:|$)", critique, re.DOTALL)
+            if match:
+                section = match.group(1).strip()
+                print(f"[{token}] {section}")
+                if token == "ISSUP":
+                    issup = extract_score(section)
+                if token == "ISREL":
+                    isrel = extract_score(section)
+                if token == "ISUSE":
+                    isuse = extract_score(section)
+        return issup, isrel, isuse
+
+    def print_token_usage(resp):
+        if hasattr(resp, "usage") and resp.usage:
+            total = getattr(resp.usage, "total_tokens", None)
+            prompt = getattr(resp.usage, "prompt_tokens", None)
+            completion = getattr(resp.usage, "completion_tokens", None)
+            print(f"🪞 Reflection tokens used: total={total}, prompt={prompt}, completion={completion}")
+        else:
+            print("🪞 Reflection token usage not available.")
+
     iteration = 0
     answer = None
     while iteration < MAX_ITERATIONS:
-        hits = retrieve(query)
-        context = "\n\n".join(h["text"] for h in hits)
+        context = build_context(query)
         user_prompt = f"Context:\n{context}\n\nQuestion: {query}\nAnswer:"
 
         # Step 1: Generate answer
-        resp = client.chat.completions.create(
-            model=LLM_MODEL,
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
+        resp = call_llm([
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt}
+        ])
         answer = resp.choices[0].message.content.strip()
         print(f"\n🧠 Iteration {iteration+1} Answer:", answer)
 
@@ -169,39 +203,15 @@ def generate_answer(query: str) -> str:
             "ISUSE: On a scale from 0 to 1, how useful and actionable is the answer for the user? (Start with a score, e.g., '0.90', then explain)\n"
             "Format your response as:\nRETRIEVE: ...\nISSUP: ...\nISREL: ...\nISUSE: ..."
         )
-        critique_resp = client.chat.completions.create(
-            model=LLM_MODEL,
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": "You are a critical and precise assistant. Only use the provided context."},
-                {"role": "user", "content": critique_prompt}
-            ]
-        )
+        critique_resp = call_llm([
+            {"role": "system", "content": "You are a critical and precise assistant. Only use the provided context."},
+            {"role": "user", "content": critique_prompt}
+        ])
         critique = critique_resp.choices[0].message.content.strip()
         print("🔍 Critique (with special tokens):\n", critique)
 
-        # Parse and print each section separately
-        issup_value, isrel_value, isuse_value = None, None, None
-        for token in ["RETRIEVE", "ISSUP", "ISREL", "ISUSE"]:
-            match = re.search(rf"{token}:(.*?)(?=\n[A-Z]+:|$)", critique, re.DOTALL)
-            if match:
-                section = match.group(1).strip()
-                print(f"[{token}] {section}")
-                if token == "ISSUP":
-                    issup_value = extract_score(section)
-                if token == "ISREL":
-                    isrel_value = extract_score(section)
-                if token == "ISUSE":
-                    isuse_value = extract_score(section)
-
-        # Print token usage for the reflection step if available
-        if hasattr(critique_resp, "usage") and critique_resp.usage:
-            total_tokens = getattr(critique_resp.usage, "total_tokens", None)
-            prompt_tokens = getattr(critique_resp.usage, "prompt_tokens", None)
-            completion_tokens = getattr(critique_resp.usage, "completion_tokens", None)
-            print(f"🪞 Reflection tokens used: total={total_tokens}, prompt={prompt_tokens}, completion={completion_tokens}")
-        else:
-            print("🪞 Reflection token usage not available.")
+        issup_value, isrel_value, isuse_value = parse_critique(critique)
+        print_token_usage(critique_resp)
 
         # Adaptive stopping: break if ISSUP, ISREL, and ISUSE meet numeric threshold
         if (
