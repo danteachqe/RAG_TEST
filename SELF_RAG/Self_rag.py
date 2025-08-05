@@ -21,6 +21,12 @@ EMBED_MODEL   = "text-embedding-3-small"
 MAX_CONTEXTS  = 3
 LLM_MODEL     = "gpt-4o-mini"
 
+# Self-RAG adaptive stopping config (edit here)
+ISSUP_THRESHOLD = 0.8  # Minimum support score (0-1) to stop
+ISREL_THRESHOLD = 0.8  # Minimum relevance score (0-1) to stop
+ISUSE_THRESHOLD = 0.8  # Minimum usefulness score (0-1) to stop
+MAX_ITERATIONS = 3     # Maximum RAG-reflection cycles
+
 SYSTEM_PROMPT = (
     "You are a concise, highly accurate assistant. "
     "If the answer cannot be found in the provided context, say 'I don't know.'"
@@ -111,14 +117,12 @@ def retrieve(query: str, k: int = MAX_CONTEXTS):
     return [{"text": texts[i], "meta": meta[i], "score": float(D[0][rank])}
             for rank, i in enumerate(I[0])]
 
-def generate_answer(query: str, issup_threshold=0.8, isrel_threshold=0.8, max_iterations=3) -> str:
+def generate_answer(query: str) -> str:
     """
     Generate an answer with self-reflection. Adaptive stopping based on ISSUP/ISREL thresholds (0-1).
+    Uses global ISSUP_THRESHOLD, ISREL_THRESHOLD, MAX_ITERATIONS.
     Args:
         query (str): The user question.
-        issup_threshold (float): Minimum support score (0-1) to stop.
-        isrel_threshold (float): Minimum relevance score (0-1) to stop.
-        max_iterations (int): Maximum RAG-reflection cycles.
     Returns:
         str: The final answer.
     """
@@ -138,7 +142,7 @@ def generate_answer(query: str, issup_threshold=0.8, isrel_threshold=0.8, max_it
 
     iteration = 0
     answer = None
-    while iteration < max_iterations:
+    while iteration < MAX_ITERATIONS:
         hits = retrieve(query)
         context = "\n\n".join(h["text"] for h in hits)
         user_prompt = f"Context:\n{context}\n\nQuestion: {query}\nAnswer:"
@@ -160,9 +164,9 @@ def generate_answer(query: str, issup_threshold=0.8, isrel_threshold=0.8, max_it
             f"Context:\n{context}\n\nQuestion: {query}\nAnswer: {answer}\n\n"
             "Reflect on the answer using the following special tokens as section headers. For each, provide a short explanation.\n"
             "RETRIEVE: What information was retrieved and used?\n"
-            "ISSUP: Is the answer supported by the retrieved context? (Answer 'yes' or 'no' at the start, then explain)\n"
-            "ISREL: Is the answer relevant to the question and context? (Answer 'yes' or 'no' at the start, then explain)\n"
-            "ISUSE: Is the answer useful and actionable for the user?\n"
+            "ISSUP: On a scale from 0 to 1, how well is the answer supported by the retrieved context? (Start with a score, e.g., '0.85', then explain)\n"
+            "ISREL: On a scale from 0 to 1, how relevant is the answer to the question and context? (Start with a score, e.g., '0.92', then explain)\n"
+            "ISUSE: On a scale from 0 to 1, how useful and actionable is the answer for the user? (Start with a score, e.g., '0.90', then explain)\n"
             "Format your response as:\nRETRIEVE: ...\nISSUP: ...\nISREL: ...\nISUSE: ..."
         )
         critique_resp = client.chat.completions.create(
@@ -177,16 +181,18 @@ def generate_answer(query: str, issup_threshold=0.8, isrel_threshold=0.8, max_it
         print("🔍 Critique (with special tokens):\n", critique)
 
         # Parse and print each section separately
-        issup_value, isrel_value = None, None
+        issup_value, isrel_value, isuse_value = None, None, None
         for token in ["RETRIEVE", "ISSUP", "ISREL", "ISUSE"]:
             match = re.search(rf"{token}:(.*?)(?=\n[A-Z]+:|$)", critique, re.DOTALL)
             if match:
                 section = match.group(1).strip()
                 print(f"[{token}] {section}")
                 if token == "ISSUP":
-                    issup_value = section.split(" ")[0].strip().lower()
+                    issup_value = extract_score(section)
                 if token == "ISREL":
-                    isrel_value = section.split(" ")[0].strip().lower()
+                    isrel_value = extract_score(section)
+                if token == "ISUSE":
+                    isuse_value = extract_score(section)
 
         # Print token usage for the reflection step if available
         if hasattr(critique_resp, "usage") and critique_resp.usage:
@@ -197,12 +203,16 @@ def generate_answer(query: str, issup_threshold=0.8, isrel_threshold=0.8, max_it
         else:
             print("🪞 Reflection token usage not available.")
 
-        # Adaptive stopping: break if ISSUP and ISREL meet threshold
-        if issup_value == issup_threshold and isrel_value == isrel_threshold:
-            print(f"✅ Stopping: ISSUP and ISREL both '{issup_threshold}'.")
+        # Adaptive stopping: break if ISSUP, ISREL, and ISUSE meet numeric threshold
+        if (
+            issup_value is not None and issup_value >= ISSUP_THRESHOLD and
+            isrel_value is not None and isrel_value >= ISREL_THRESHOLD and
+            isuse_value is not None and isuse_value >= ISUSE_THRESHOLD
+        ):
+            print(f"✅ Stopping: ISSUP={issup_value}, ISREL={isrel_value}, ISUSE={isuse_value} >= threshold (ISSUP={ISSUP_THRESHOLD}, ISREL={ISREL_THRESHOLD}, ISUSE={ISUSE_THRESHOLD}).")
             break
         else:
-            print(f"🔄 Continuing: ISSUP='{issup_value}', ISREL='{isrel_value}' (threshold='{issup_threshold}').")
+            print(f"🔄 Continuing: ISSUP={issup_value}, ISREL={isrel_value}, ISUSE={isuse_value} (thresholds: ISSUP={ISSUP_THRESHOLD}, ISREL={ISREL_THRESHOLD}, ISUSE={ISUSE_THRESHOLD}).")
         iteration += 1
     return answer
 
